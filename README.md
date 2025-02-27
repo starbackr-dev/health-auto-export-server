@@ -71,7 +71,7 @@ If you are unfamiliar with Grafana, you can import pre-configured dashboards to 
 
 1. Navigate to the `Dashboards` tab
 2. Select `New` and then `Import`
-3. Upload the dashboard JSON file from the `dashboards` folder, or copy the JSON into the `Import via dashboard JSON model` text area
+3. Upload the dashboard JSON file from the `dashboard-examples` folder, or copy the JSON into the `Import via dashboard JSON model` text area
 
 # Troubleshooting
 
