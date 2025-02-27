@@ -1,0 +1,57 @@
+services:
+  hae-mongo:
+    container_name: hae-mongo
+    image: mongo:latest
+    restart: unless-stopped
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - hae_network
+    ports:
+      - "${MONGO_PORT}:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DB}
+
+  hae-grafana:
+    container_name: hae-grafana
+    image: grafana/grafana-oss:latest
+    ports:
+      - 3000:3000
+    volumes:
+      - ./grafana-data:/var/lib/grafana
+    restart: unless-stopped
+    networks:
+      - hae_network
+    depends_on:
+      - hae-mongo
+
+  hae-server:
+    container_name: hae-server
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - MONGO_HOST=${MONGO_HOST}
+      - MONGO_PORT=${MONGO_PORT}
+      - MONGO_DB=${MONGO_DB}
+      - MONGO_USERNAME=${MONGO_USERNAME}
+      - MONGO_PASSWORD=${MONGO_PASSWORD}
+    depends_on:
+      - hae-mongo
+    networks:
+      - hae_network
+    restart: unless-stopped
+
+networks:
+  hae_network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  grafana-data:
+  mongodb-data:

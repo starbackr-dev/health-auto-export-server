@@ -1,0 +1,7 @@
+server/node_modules
+server/dist
+server/.env
+.env
+grafana-data
+
+seed_data/*
