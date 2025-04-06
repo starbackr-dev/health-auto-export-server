@@ -2,7 +2,7 @@
 
 ## Overview
 
-![Helath Dashboard](docs/images/hae-grafana-health-metrics.png)
+![Health Dashboard](docs/images/hae-grafana-health-metrics.png)
 
 This project provides a web interface for viewing Apple Health data via a web interface using Grafana and a Node.js server.
 
@@ -29,11 +29,12 @@ In order to use this project, you will need:
    - `MONGO_PASSWORD`: `mypassword` (set a secure password)
    - `MONGO_DB`: `health-auto-export`
    - `MONGO_PORT`: `27017`
-5. Run `docker compose up -d` in your terminal
-6. Open Grafana in your browser at http://localhost:3000
-7. Login with the default credentials: `admin / admin`
-8. Determine [your computer's local IP address](https://geekflare.com/consumer-tech/find-ip-address-of-windows-linux-mac-and-website/) and note it down
-9. Configure the Health Auto Export app to send data to http://your-computer-ip:3001/api/health-data as outlined in **Step 3**
+5. You may need to uncomment [the line](https://github.com/HealthyApps/health-auto-export-server/blob/4163bb5e8aa8d2cdac2a9971c164c0fa46604866/docker-compose.yaml#L24) `user: "0:0"` in `docker-compose.yaml` when running Ubuntu.
+6. Run `docker compose up -d` in your terminal.
+7. Open Grafana in your browser at http://localhost:3000
+8. Login with the default credentials: `admin / admin`
+9. Determine [your computer's local IP address](https://geekflare.com/consumer-tech/find-ip-address-of-windows-linux-mac-and-website/) and note it down
+10. Configure the Health Auto Export app to send data to http://your-computer-ip:3001/api/health-data as outlined in **Step 3**
 
 ### Step 2: Grafana Setup
 
@@ -55,7 +56,7 @@ In order to use this project, you will need:
    - Data Type: `Health Metrics` or `Workouts` (create separate automations for each if you want to sync different data types)
    - Export Format: `JSON`
    - Aggregate Data: `Enabled` 🟢
-   - Aggregate Interval: `Days`
+   - Aggregate Interval: `Days` (this can be adjusted according to the level granularity you want when viewing your data)
    - Batch Requests: `Enabled` 🟢
 5. Tap `Update` in the top navigation bar to save the automation
 6. Use `Manual Export` to select a date range and manually trigger a data export to your computer
@@ -72,6 +73,7 @@ If you are unfamiliar with Grafana, you can import pre-configured dashboards to 
 1. Navigate to the `Dashboards` tab
 2. Select `New` and then `Import`
 3. Upload the dashboard JSON file from the `dashboard-examples` folder, or copy the JSON into the `Import via dashboard JSON model` text area
+4. You can find a full list of metrics available in [`MetricName.ts`](https://github.com/HealthyApps/health-auto-export-server/blob/4163bb5e8aa8d2cdac2a9971c164c0fa46604866/server/src/models/MetricName.ts#L1). These can be used in the datasource URL in order to fetch each metric from the database.
 
 # Troubleshooting
 
