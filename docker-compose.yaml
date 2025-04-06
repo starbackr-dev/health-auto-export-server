@@ -21,6 +21,7 @@ services:
       - 3000:3000
     volumes:
       - ./grafana-data:/var/lib/grafana
+    # user: "0:0" # you may need to uncomment this line if using Ubuntu or if you expereince permission errors
     restart: unless-stopped
     networks:
       - hae_network
