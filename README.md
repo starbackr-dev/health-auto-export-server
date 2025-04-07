@@ -34,7 +34,7 @@ In order to use this project, you will need:
 7. Open Grafana in your browser at http://localhost:3000
 8. Login with the default credentials: `admin / admin`
 9. Determine [your computer's local IP address](https://geekflare.com/consumer-tech/find-ip-address-of-windows-linux-mac-and-website/) and note it down
-10. Configure the Health Auto Export app to send data to http://your-computer-ip:3001/api/health-data as outlined in **Step 3**
+10. Configure the Health Auto Export app to send data to http://your-computer-ip:3001/api/data as outlined in **Step 3**
 
 ### Step 2: Grafana Setup
 
