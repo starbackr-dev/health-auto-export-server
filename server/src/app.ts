@@ -1,15 +1,12 @@
 import cors from 'cors';
 import express from 'express';
 
-import mongodb from './database/mongodb';
 import ingesterRouter from './routes/ingester';
 import metricsRouter from './routes/metrics';
 import workoutsRouter from './routes/workouts';
 
 const app = express();
-const port = 3001;
-
-mongodb.connect();
+const port = 3789;
 
 const corsOptions = {
   origin: '*',

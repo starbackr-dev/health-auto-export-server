@@ -1,25 +1,23 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Request, Response } from 'express';
 
+import pool from '../database/postgres';
 import { IngestData } from '../models/IngestData';
 import { IngestResponse } from '../models/IngestResponse';
 import {
   BaseMetric,
   BloodPressureMetric,
-  BloodPressureModel,
   HeartRateMetric,
-  HeartRateModel,
   Metric,
   SleepMetric,
-  SleepModel,
   mapMetric,
-  createMetricModel,
 } from '../models/Metric';
 import { MetricName } from '../models/MetricName';
 
 export const getMetrics = async (req: Request, res: Response) => {
   try {
     const { from, to } = req.query;
-    const selectedMetric = req.params.selected_metric as MetricName;
+    const selectedMetric = req.params.selected_metric;
 
     if (!selectedMetric) {
       throw new Error('No metric selected');
@@ -30,32 +28,16 @@ export const getMetrics = async (req: Request, res: Response) => {
 
     const isDate = (date: Date) => !isNaN(date.getTime());
 
-    let query = {};
+    let query = 'SELECT * FROM metrics WHERE name = $1';
+    const queryParams = [selectedMetric];
 
     if (isDate(fromDate) && isDate(toDate)) {
-      query = {
-        date: {
-          $gte: fromDate,
-          $lte: toDate,
-        },
-      };
+      query += ' AND date BETWEEN $2 AND $3';
+      queryParams.push(fromDate.toISOString(), toDate.toISOString());
     }
 
-    let metrics;
-
-    switch (selectedMetric) {
-      case MetricName.BLOOD_PRESSURE:
-        metrics = await BloodPressureModel.find(query).lean();
-        break;
-      case MetricName.HEART_RATE:
-        metrics = await HeartRateModel.find(query).lean();
-        break;
-      case MetricName.SLEEP_ANALYSIS:
-        metrics = await SleepModel.find(query).lean();
-        break;
-      default:
-        metrics = await createMetricModel(selectedMetric).find(query).lean();
-    }
+    const result = await pool.query(query, queryParams);
+    const metrics = result.rows;
 
     console.log(metrics);
     res.json(metrics);
@@ -67,6 +49,7 @@ export const getMetrics = async (req: Request, res: Response) => {
 
 export const saveMetrics = async (ingestData: IngestData): Promise<IngestResponse> => {
   try {
+    console.log(JSON.stringify(ingestData));
     const response: IngestResponse = {};
     const metricsData = ingestData.data.metrics;
 
@@ -92,53 +75,27 @@ export const saveMetrics = async (ingestData: IngestData): Promise<IngestRespons
       },
     );
 
-    const saveOperations = Object.entries(metricsByType).map(([key, metrics]) => {
-      switch (key as MetricName) {
-        case MetricName.BLOOD_PRESSURE:
-          const bpMetrics = metrics as BloodPressureMetric[];
-          return BloodPressureModel.bulkWrite(
-            bpMetrics.map((metric) => ({
-              updateOne: {
-                filter: { source: metric.source, date: metric.date },
-                update: { $set: metric },
-                upsert: true,
-              },
-            })),
-          );
-        case MetricName.HEART_RATE:
-          const hrMetrics = metrics as HeartRateMetric[];
-          return HeartRateModel.bulkWrite(
-            hrMetrics.map((metric) => ({
-              updateOne: {
-                filter: { source: metric.source, date: metric.date },
-                update: { $set: metric },
-                upsert: true,
-              },
-            })),
-          );
-        case MetricName.SLEEP_ANALYSIS:
-          const sleepMetrics = metrics as SleepMetric[];
-          return SleepModel.bulkWrite(
-            sleepMetrics.map((metric) => ({
-              updateOne: {
-                filter: { source: metric.source, date: metric.date },
-                update: { $set: metric },
-                upsert: true,
-              },
-            })),
-          );
-        default:
-          const baseMetrics = metrics as BaseMetric[];
-          const model = createMetricModel(key as MetricName);
-          return model.bulkWrite(
-            baseMetrics.map((metric) => ({
-              updateOne: {
-                filter: { source: metric.source, date: metric.date },
-                update: { $set: metric },
-                upsert: true,
-              },
-            })),
-          );
+    const saveOperations = Object.entries(metricsByType).map(async ([key, metrics]) => {
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        for (const metric of metrics) {
+          if (metric.source == null) metric.source = 'source unknown';
+          const { source, date, ...data } = metric;
+          const query = `
+            INSERT INTO metrics (name, source, date, data)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (name, source, date)
+            DO UPDATE SET data = EXCLUDED.data;
+          `;
+          await client.query(query, [key, source, date, data]);
+        }
+        await client.query('COMMIT');
+      } catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
+      } finally {
+        client.release();
       }
     });
 

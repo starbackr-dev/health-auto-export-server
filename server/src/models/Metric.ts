@@ -1,5 +1,3 @@
-import mongoose, { Schema, Document } from 'mongoose';
-
 import { MetricName } from './MetricName';
 
 export interface MetricData {
@@ -61,7 +59,9 @@ export const mapMetric = (
         systolic: measurement.systolic,
         diastolic: measurement.diastolic,
         units: metric.units,
-        date: new Date(measurement.date),
+        date: isValidDate(measurement.date)
+          ? new Date(measurement.date)
+          : new Date('1970-01-01T00:00:00Z'), // Provide a default or handle error
         source: measurement.source,
         metadata: measurement.metadata,
       }));
@@ -72,18 +72,30 @@ export const mapMetric = (
         Avg: measurement.Avg,
         Max: measurement.Max,
         units: metric.units,
-        date: new Date(measurement.date),
+        date: isValidDate(measurement.date)
+          ? new Date(measurement.date)
+          : new Date('1970-01-01T00:00:00Z'), // Provide a default or handle error
         source: measurement.source,
         metadata: measurement.metadata,
       }));
     case MetricName.SLEEP_ANALYSIS:
       const sleepData = metric.data as SleepMetric[];
       return sleepData.map((measurement) => ({
-        date: new Date(measurement.date),
-        inBedStart: new Date(measurement.inBedStart),
-        inBedEnd: new Date(measurement.inBedEnd),
-        sleepStart: new Date(measurement.sleepStart),
-        sleepEnd: new Date(measurement.sleepEnd),
+        date: isValidDate(measurement.date)
+          ? new Date(measurement.date)
+          : new Date('1970-01-01T00:00:00Z'), // Provide a default or handle error
+        inBedStart: isValidDate(measurement.inBedStart)
+          ? new Date(measurement.inBedStart)
+          : new Date('1970-01-01T00:00:00Z'), // Provide a default or handle error
+        inBedEnd: isValidDate(measurement.inBedEnd)
+          ? new Date(measurement.inBedEnd)
+          : new Date('1970-01-01T00:00:00Z'), // Provide a default or handle error
+        sleepStart: isValidDate(measurement.sleepStart)
+          ? new Date(measurement.sleepStart)
+          : new Date('1970-01-01T00:00:00Z'), // Provide a default or handle error
+        sleepEnd: isValidDate(measurement.sleepEnd)
+          ? new Date(measurement.sleepEnd)
+          : new Date('1970-01-01T00:00:00Z'), // Provide a default or handle error
         core: measurement.core,
         rem: measurement.rem,
         deep: measurement.deep,
@@ -98,92 +110,21 @@ export const mapMetric = (
       return baseData.map((measurement) => ({
         qty: measurement.qty,
         units: metric.units,
-        date: new Date(measurement.date),
+        date: isValidDate(measurement.date)
+          ? new Date(measurement.date)
+          : new Date('1970-01-01T00:00:00Z'), // Provide a default or handle error
         source: measurement.source,
         metadata: measurement.metadata,
       }));
   }
 };
 
-export type Metric = BaseMetric | BloodPressureMetric | SleepMetric | HeartRateMetric;
-
-// Separate interfaces for documents
-interface IMetric extends BaseMetric, Document {}
-interface IBloodPressureMetric extends BloodPressureMetric, Document {}
-interface IHeartRateMetric extends HeartRateMetric, Document {}
-interface ISleepMetric extends SleepMetric, Document {}
-
-// Base Metric Schema
-const BaseMetricSchema: Schema = new Schema({
-  qty: { type: Number, required: true },
-  units: { type: String, required: true },
-  date: { type: Date, required: true },
-  source: { type: String, required: true },
-  metadata: { type: Object, required: false },
-});
-
-BaseMetricSchema.index({ date: 1, source: 1 }, { unique: true });
-
-// Blood Pressure Schema
-const BloodPressureSchema: Schema = new Schema({
-  systolic: { type: Number, required: true },
-  diastolic: { type: Number, required: true },
-  units: { type: String, required: true },
-  date: { type: Date, required: true },
-  source: { type: String, required: true },
-  metadata: { type: Object, required: false },
-});
-
-BloodPressureSchema.index({ date: 1, source: 1 }, { unique: true });
-
-// Heart Rate Schema
-const HeartRateSchema: Schema = new Schema({
-  Min: { type: Number, required: true },
-  Avg: { type: Number, required: true },
-  Max: { type: Number, required: true },
-  units: { type: String, required: true },
-  date: { type: Date, required: true },
-  source: { type: String, required: true },
-  metadata: { type: Object, required: false },
-});
-
-HeartRateSchema.index({ date: 1, source: 1 }, { unique: true });
-
-// Sleep Schema
-const SleepSchema: Schema = new Schema({
-  date: { type: Date, required: true },
-  inBedStart: { type: Date, required: true },
-  inBedEnd: { type: Date, required: true },
-  sleepStart: { type: Date, required: true },
-  sleepEnd: { type: Date, required: true },
-  core: { type: Number, required: true },
-  rem: { type: Number, required: true },
-  deep: { type: Number, required: true },
-  awake: { type: Number, required: true },
-  inBed: { type: Number, required: true },
-  units: { type: String, required: true },
-  source: { type: String, required: true },
-  metadata: { type: Object, required: false },
-});
-
-SleepSchema.index({ date: 1, source: 1 }, { unique: true });
-
-export const createMetricModel = (name: MetricName) => {
-  return mongoose.model<IMetric>(String(name), BaseMetricSchema, String(name));
+const isValidDate = (date: any): boolean => {
+  if (date === null || date === undefined) {
+    return false;
+  }
+  const parsedDate = new Date(date);
+  return !isNaN(parsedDate.getTime());
 };
 
-export const BloodPressureModel = mongoose.model<IBloodPressureMetric>(
-  'BloodPressure',
-  BloodPressureSchema,
-  'blood_pressure',
-);
-export const HeartRateModel = mongoose.model<IHeartRateMetric>(
-  'HeartRate',
-  HeartRateSchema,
-  'heart_rate',
-);
-export const SleepModel = mongoose.model<ISleepMetric>(
-  'SleepAnalysis',
-  SleepSchema,
-  'sleep_analysis',
-);
+export type Metric = BaseMetric | BloodPressureMetric | SleepMetric | HeartRateMetric;
