@@ -44,6 +44,9 @@ export const ingestData = async (req: Request, res: Response) => {
 
 export const ingestHealthMetrics = async (req: Request, res: Response) => {
   try {
+    // Check if it's the new sleep metrics payload
+    console.log(`req: ${JSON.stringify(req.body)}`);
+
     const healthMetricsData = req.body.data?.metrics;
 
     if (!healthMetricsData || !Array.isArray(healthMetricsData)) {
@@ -54,24 +57,85 @@ export const ingestHealthMetrics = async (req: Request, res: Response) => {
     }
 
     for (const metric of healthMetricsData) {
-      if (metric.data && Array.isArray(metric.data)) {
+      if (metric.name === 'sleep_analysis' && metric.data && Array.isArray(metric.data)) {
         for (const dataPoint of metric.data) {
-          const { startDate, endDate, source, qty, value } = dataPoint;
-          const metricName = metric.name;
-          const units = metric.units;
+          const {
+            deep,
+            core,
+            awake,
+            rem,
+            source,
+            inBed,
+            inBedStart,
+            inBedEnd,
+            sleepStart,
+            asleep,
+            sleepEnd,
+          } = dataPoint;
 
-          // Assuming the table is named 'health_metrics'
-          const query = `
-            INSERT INTO health_metrics (metric_name, units, start_date, end_date, source, quantity, value)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-          `;
-          const values = [metricName, units, startDate, endDate, source, qty, value];
+          type SleepMetric = {
+            metricName: string;
+            units: string;
+            startDate: string;
+            endDate: string;
+            source: string;
+            quantity: number;
+            value: number;
+          };
 
-          await pool.query(query, values);
+          const metricsToInsert: SleepMetric[] = [];
+
+          // Helper to add metrics
+          const addMetric = (
+            name: string,
+            value: number,
+            start: string,
+            end: string,
+            unit: string = 'hours',
+          ) => {
+            if (value !== undefined && value !== null) {
+              metricsToInsert.push({
+                metricName: `sleep_${name}`,
+                units: unit,
+                startDate: start,
+                endDate: end,
+                source: source,
+                quantity: 1,
+                value: value,
+              });
+            }
+          };
+
+          addMetric('deep', deep, sleepStart, sleepEnd);
+          addMetric('core', core, sleepStart, sleepEnd);
+          addMetric('awake', awake, sleepStart, sleepEnd);
+          addMetric('rem', rem, sleepStart, sleepEnd);
+          addMetric('asleep', asleep, sleepStart, sleepEnd);
+          addMetric('inBed', inBed, inBedStart, inBedEnd);
+
+          for (const sleepMetric of metricsToInsert) {
+            const query = `
+              INSERT INTO health_metrics (metric_name, units, start_date, end_date, source, quantity, value)
+              VALUES ($1, $2, $3, $4, $5, $6, $7)
+            `;
+            const values = [
+              sleepMetric.metricName,
+              sleepMetric.units,
+              sleepMetric.startDate,
+              sleepMetric.endDate,
+              sleepMetric.source,
+              sleepMetric.quantity,
+              sleepMetric.value,
+            ];
+            await pool.query(query, values);
+            console.log(`Values: ${values}`);
+          }
         }
+      } else {
+        // Handle other metric types if necessary, or log a warning
+        console.warn(`Unsupported metric type or format: ${metric.name}`);
       }
     }
-
     res.status(200).json({ message: 'Health metrics ingested successfully' });
   } catch (error) {
     console.error('Error ingesting health metrics:', error);

@@ -119,7 +119,7 @@ export const mapMetric = (
   }
 };
 
-const isValidDate = (date: any): boolean => {
+const isValidDate = (date: Date): boolean => {
   if (date === null || date === undefined) {
     return false;
   }
